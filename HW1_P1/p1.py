@@ -13,19 +13,17 @@ def histogram(gray_in):
 #             hist[val] += 1
     return np.asarray(hist)
     
-def denoisy_median_filtering(gray_in, diameter=3):
+def denoisy_median_filtering(gray_in, diameter):
     radius = (diameter - 1) / 2
     padded_img = np.pad(gray_in, radius, 'edge')
     valsR = []
     valsG = []
     valsB = []
     toReturn = np.array(gray_in, dtype=np.int)
-    imR = gray_in[:, :, 0];
-    list
-    for i in range(radius, imR.shape[0]):
-        for j in range(radius, imR.shape[1]):
-            for a in range(i - radius, i - radius + diameter):
-                for b in range(j - radius, j - radius + diameter):
+    for i in range(0, gray_in.shape[0]):
+        for j in range(0, gray_in.shape[1]):
+            for a in range(i, i + diameter):
+                for b in range(j, j + diameter):
                     valsR.append(padded_img[a, b, 0])
                     valsG.append(padded_img[a, b, 1])
                     valsB.append(padded_img[a, b, 2])
@@ -40,3 +38,4 @@ def denoisy_median_filtering(gray_in, diameter=3):
             valsB = []
             
     return toReturn
+    
