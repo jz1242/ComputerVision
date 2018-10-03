@@ -1,5 +1,6 @@
 import cv2
 import numpy as np
+import math
 def read_image(im_path):
     img = cv2.imread(im_path, cv2.IMREAD_GRAYSCALE)
     return img
@@ -28,8 +29,18 @@ def denoisy_median_filtering(gray_in, diameter):
             
     return toReturn
 
+def binarize(gray_in, threshold):
+    binary_image = np.array(gray_in, dtype=np.uint8)
+    for i in range(0, binary_image.shape[0]):
+        for j in range(0, binary_image.shape[1]):
+            if binary_image[i][j] > threshold:
+                binary_image[i][j] = 255
+            else:
+                binary_image[i][j] = 0
+    return binary_image
+
 def sequential_label(binary_in):
-    labelled_image = np.zeros((binary_in.shape[0], binary_in.shape[1]), dtype=np.uint8)
+    labelled_image = np.zeros((binary_in.shape[0], binary_in.shape[1]), dtype=np.int)
     label = 0
     hei = binary_in.shape[0]
     wid = binary_in.shape[1]
@@ -85,19 +96,33 @@ def sequential_label(binary_in):
                     label += 1
                     labelled_image[i][j] = label
                 else: 
-                    labelled_image[i][j] = 0 
+                    labelled_image[i][j] = 0
     for i in range(0, hei):
         for j in range(0, wid):
             val = labelled_image[i][j]
             if val in conflict:
                 dat = min(conflict[val])
                 labelled_image[i][j] = dat
-    return labelled_image
+    unique_labels = np.unique(labelled_image)
+    print(unique_labels)
+    label_mapping = {}
+    count = 1
+    for i in unique_labels:
+        if i == 0:
+            continue
+        label_mapping[i] = count
+        count += 1
+    for i in range(0, hei):
+        for j in range(0, wid):
+            val = labelled_image[i][j]
+            if val in label_mapping:
+                dat = label_mapping[val]
+                labelled_image[i][j] = dat
+    return np.array(labelled_image, dtype=np.uint8)
     
 def compute_moment(labelled_in):
     unique_vals = np.unique(labelled_in)
     moment_dict = {}
-    data = []
     for label_idx in unique_vals:
         if label_idx == 0:
             continue
@@ -133,3 +158,55 @@ def compute_moment(labelled_in):
         moment_dict[label_idx] = data
             
     return moment_dict
+
+def compute_attribute(labelled_in):
+    # TODO
+    # attribute_dict = {label_idx: [area, (y_pos, x_pos), roundedness], ...}
+    moments = compute_moment(labelled_in)
+    attribute_dict = {}
+    unique_vals = np.unique(labelled_in)
+    for label_idx in unique_vals:
+        if label_idx == 0:
+            continue
+        area = moments[label_idx][0]
+        y_pos = moments[label_idx][1] / area
+        x_pos = moments[label_idx][2] / area
+        a = moments[label_idx][8]
+        b = 2 * moments[label_idx][7]
+        c = moments[label_idx][6]
+        tan_1 = 0.5*math.atan2(b, a-c)
+        tan_2 = tan_1 + (math.pi/2)
+        max_tan = max(tan_1, tan_2)
+        min_tan = min(tan_1, tan_2)
+        E_1 = a*(math.sin(min_tan)**2) - b*math.sin(min_tan)*math.cos(min_tan) + c*(math.cos(min_tan)**2)
+        E_2 = a*(math.sin(max_tan)**2) - b*math.sin(max_tan)*math.cos(max_tan) + c*(math.cos(max_tan)**2)
+        roundedness = min(E_1, E_2)/ max(E_1, E_2)
+        data = [area, (y_pos, x_pos), roundedness]
+        attribute_dict[label_idx] = data
+    return attribute_dict
+
+def recognize_objects(new_img_path, attribute_dict):
+    img = read_image(new_img_path)
+    binarized_img = binarize(img, 128)
+    labelled_img = sequential_label(binarized_img)
+    result_img = np.array(labelled_img)
+#     plt.imshow(binarized_img)
+#     plt.axis('off')
+#     plt.show()
+    new_attri = compute_attribute(labelled_img)#2
+    keys = []
+    for key in attribute_dict:
+        targetVal = attribute_dict[key][2]
+        for s in new_attri:
+            diff = abs(targetVal - new_attri[s][2])
+            if(diff < 0.1):
+                keys.append(s)
+    for j in range(0, result_img.shape[0]):
+        for k in range(0, result_img.shape[1]):
+            if result_img[j][k] in keys:
+                result_img[j][k] = 255
+            else:
+                result_img[j][k] = 0
+
+    
+    return result_img
