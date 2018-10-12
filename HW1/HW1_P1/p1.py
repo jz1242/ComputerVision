@@ -17,7 +17,7 @@ def denoisy_median_filtering(gray_in, diameter):
     radius = (diameter - 1) / 2
     padded_img = np.pad(gray_in, radius, 'edge')
     vals = []
-    toReturn = np.array(gray_in, dtype=np.int)
+    toReturn = np.array(gray_in, dtype=np.uint8)
     for i in range(0, gray_in.shape[0]):
         for j in range(0, gray_in.shape[1]):
             for a in range(i, i + diameter):
@@ -190,9 +190,6 @@ def recognize_objects(new_img_path, attribute_dict):
     binarized_img = binarize(img, 128)
     labelled_img = sequential_label(binarized_img)
     result_img = np.array(labelled_img)
-#     plt.imshow(binarized_img)
-#     plt.axis('off')
-#     plt.show()
     new_attri = compute_attribute(labelled_img)#2
     keys = []
     for key in attribute_dict:
